@@ -1,0 +1,85 @@
+# Name-based detection dictionary.
+# Each category lists `strong` and `weak` regex patterns matched (case-insensitive)
+# against the normalized column name. Strong patterns are high-confidence signals;
+# weak patterns are suggestive and tend to route a column to the human review queue.
+# Patterns use RE2-compatible syntax (no lookahead/lookbehind).
+categories:
+  GOV_ID:
+    strong:
+      - '\bssn\b'
+      - 'social_?security'
+      - '\btin\b'
+      - '\bein\b'
+      - 'tax_?id'
+      - 'national_?id'
+      - 'passport'
+      - 'driver_?s?_?licen[sc]e'
+      - '\bdl_?(no|num|number)\b'
+    weak:
+      - 'license_?number'
+  FINANCIAL:
+    strong:
+      - 'bank_?account'
+      - 'account_?number'
+      - 'routing'
+      - '\biban\b'
+      - '\bswift\b'
+      - 'card_?(no|num|number)'
+      - '\bpan\b'
+      - 'cc_?(no|num|number)'
+      - 'credit_?card'
+    weak:
+      - 'payment_?account'
+      - '\bacct\b'
+  CONTACT:
+    strong:
+      - 'e_?mail'
+      - '\bphone\b'
+      - '\bmobile\b'
+      - '\bmsisdn\b'
+      - 'street_?address'
+      - '\baddress\b'
+      - 'postal_?code'
+      - 'zip_?code'
+      - '\bzip\b'
+    weak:
+      - 'address_?line'
+  DIRECT_IDENTIFIER:
+    strong:
+      - 'policyholder_?name'
+      - 'claimant_?name'
+      - 'insured_?name'
+      - 'beneficiary_?name'
+      - 'full_?name'
+      - 'first_?name'
+      - 'last_?name'
+    weak:
+      - 'contact_?name'
+      - '\bname\b'
+      - '\bnm\b'          # 'NM' abbreviation for name (e.g. NRTH_AM_UND_NM_EXT)
+  HEALTH:
+    strong:
+      - 'diagnosis'
+      - '\bicd(_?\d+)?(_?code)?\b'
+      - 'injury'
+      - 'medical'
+      - 'treatment'
+      - 'condition_?code'
+    weak:
+      - 'provider_?name'
+      - '\bprovider\b'
+  QUASI_IDENTIFIER:
+    strong:
+      - 'date_?of_?birth'
+      - '\bdob\b'
+      - 'birth_?date'
+      - '\bgender\b'
+      - 'marital_?status'
+      - '\bvin\b'
+      - 'license_?plate'
+    weak:
+      - '\bage\b'
+      - 'nationality'
+      - '\bcity\b'          # coarse geo — re-identification risk, not direct contact
+      - '\btown\b'
+      - '\bcounty\b'

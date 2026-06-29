@@ -1,0 +1,15 @@
+# Role model used by the generated masking policies and DDL.
+# Default analyst/reporting roles inherit NEITHER privileged role, so they always
+# see masked values. Grant the privileged roles to specific users out of band.
+governance_schema: GOVERNANCE   # database.schema where tags & policies live (DB prefixed at runtime)
+governance_database: GOVERNANCE_DB
+
+roles:
+  full_reader: PII_FULL_READER       # sees full cleartext
+  partial_reader: PII_PARTIAL_READER # sees partial reveal (e.g. last 4)
+
+# Informational only (documented in the runbook); these must NOT be granted the roles above.
+default_masked_roles:
+  - ANALYST
+  - REPORTING
+  - DATA_SCIENCE

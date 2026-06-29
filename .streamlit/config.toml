@@ -1,0 +1,17 @@
+# Streamlit server config for self-hosting PII Guardian.
+[server]
+headless = true
+# Bound to all interfaces for EXL-wide team access (password gate via secrets.toml).
+# NOTE: plain HTTP — traffic is unencrypted on the network. For production PII use,
+# front this with HTTPS + restricted access (see ACCESS_GUIDE.md / DEPLOY.md).
+address = "0.0.0.0"
+port = 8501
+maxUploadSize = 500          # MB; raise if you process large files
+enableXsrfProtection = true
+enableCORS = false
+
+[browser]
+gatherUsageStats = false     # no telemetry — keep it self-contained
+
+[theme]
+base = "dark"

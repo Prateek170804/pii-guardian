@@ -1,0 +1,28 @@
+# Secrets — never commit
+.streamlit/secrets.toml
+*.key
+pii.key
+
+# Runtime logs / generated artifacts
+service.log
+_diag_*.txt
+outputs/
+
+# Uploaded / processed data (no PII in repo)
+*.csv
+*.xlsx
+!tests/**/*.csv
+!samples/**/*.csv
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

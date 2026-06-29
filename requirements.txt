@@ -1,0 +1,8 @@
+# Core discovery/classification (run.py)
+PyYAML>=6.0
+# Cell encryption + file handling (protect.py, cellcrypto)
+cryptography>=42.0
+openpyxl>=3.1
+# Web UIs (choose one): Streamlit app (streamlit_app.py) or Flask app (ui.py)
+streamlit>=1.40
+flask>=3.0

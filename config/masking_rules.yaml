@@ -1,0 +1,37 @@
+# Behavior selection for masking. Each column's mask behavior is decided during
+# classification (so the catalog is the single source of truth) using:
+#   1. a "hint" (ssn/email/phone/card) derived from value detectors or the column name
+#   2. otherwise the category + data-type fallback below
+#
+# Behavior bodies (the actual SQL) live in the generator (sqlgen.py) keyed by these names,
+# so policy logic stays centralized and RE2-correct.
+
+behaviors:
+  full_mask_string: {type: STRING}
+  mask_ssn:         {type: STRING}
+  mask_email:       {type: STRING}
+  mask_phone:       {type: STRING}
+  mask_card:        {type: STRING}
+  full_mask_number: {type: NUMBER}
+  full_mask_date:   {type: DATE}
+
+# Specific reveal behaviors when we know the field shape.
+hint_behavior:
+  ssn: mask_ssn
+  email: mask_email
+  phone: mask_phone
+  card: mask_card
+
+# Fallback: full mask by category + data-type group when no specific hint applies.
+category_type_default:
+  GOV_ID:            {STRING: full_mask_string, NUMBER: full_mask_number, DATE: full_mask_date}
+  FINANCIAL:         {STRING: full_mask_string, NUMBER: full_mask_number, DATE: full_mask_date}
+  HEALTH:            {STRING: full_mask_string, NUMBER: full_mask_number, DATE: full_mask_date}
+  DIRECT_IDENTIFIER: {STRING: full_mask_string, NUMBER: full_mask_number, DATE: full_mask_date}
+  CONTACT:           {STRING: full_mask_string, NUMBER: full_mask_number, DATE: full_mask_date}
+  QUASI_IDENTIFIER:  {STRING: full_mask_string, NUMBER: full_mask_number, DATE: full_mask_date}
+
+# OPTIONAL: fully-qualified columns to additionally protect with column-level ENCRYPTION
+# (top tier only; you own key management). Leave empty to skip. Example:
+#   - RAW_DB.POLICY.POLICYHOLDER.SSN
+encrypt_columns: []

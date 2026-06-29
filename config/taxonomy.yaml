@@ -1,0 +1,35 @@
+# Maps categories to sensitivity tiers and defines the scoring knobs.
+sensitivity_by_category:
+  GOV_ID: RESTRICTED
+  FINANCIAL: RESTRICTED
+  HEALTH: RESTRICTED
+  DIRECT_IDENTIFIER: CONFIDENTIAL
+  CONTACT: CONFIDENTIAL
+  QUASI_IDENTIFIER: INTERNAL
+
+# Regulatory dimension — which regimes a category implicates (US P&C insurer).
+# This turns a classification into audit evidence: the tag tells you *which*
+# obligations attach. PCI is added dynamically for payment-card (PAN) data only.
+# (Operational guidance, not legal advice; confirm state adoptions with counsel.)
+regulation_by_category:
+  GOV_ID: [GLBA, NAIC/NYDFS, CCPA]
+  FINANCIAL: [GLBA, NAIC/NYDFS]
+  HEALTH: [HIPAA, GLBA]
+  DIRECT_IDENTIFIER: [GLBA, CCPA]
+  CONTACT: [GLBA, CCPA]
+  QUASI_IDENTIFIER: [CCPA, GLBA]
+
+# Confidence scoring
+strengths:
+  strong: 0.9   # name_signal for a strong pattern match
+  weak: 0.5     # name_signal for a weak pattern match
+
+thresholds:
+  high: 0.80    # >= high  -> auto-classify (eligible for auto tag + masking)
+  low: 0.45     # [low,high) -> human review queue;  < low -> ignored
+
+weights:
+  name: 0.5
+  value: 0.5
+  name_only_cap: 0.90   # max confidence achievable from a name match alone
+  value_only_cap: 0.85  # max confidence achievable from value evidence alone
