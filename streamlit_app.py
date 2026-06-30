@@ -17,7 +17,6 @@ import os
 import tempfile
 
 import streamlit as st
-import pandas as pd
 from cryptography.fernet import Fernet, InvalidToken
 
 from pii_guardian.cellcrypto import (
@@ -38,6 +37,18 @@ def workdir() -> str:
     if "work" not in st.session_state:
         st.session_state.work = tempfile.mkdtemp(prefix="pii_st_")
     return st.session_state.work
+
+
+def _conf_bar(v: float) -> str:
+    """Render confidence as a colored progress bar: green high, amber medium, red low."""
+    color = "#21c45d" if v >= 0.80 else "#f59e0b" if v >= 0.50 else "#ef4444"
+    pct = max(0, min(100, int(round(v * 100))))
+    return (
+        "<div style='display:flex;align-items:center;gap:8px;'>"
+        "<div style='flex:1;min-width:60px;background:#2b2f3a;border-radius:6px;height:14px;overflow:hidden;'>"
+        f"<div style='width:{pct}%;background:{color};height:100%;border-radius:6px;'></div></div>"
+        f"<span style='min-width:34px;text-align:right;'>{v:.2f}</span></div>"
+    )
 
 
 CLF = get_classifier()
@@ -88,33 +99,37 @@ with tab_enc:
         if not rows:
             st.success("No sensitive columns detected.")
         else:
-            df = pd.DataFrame([{
-                "Encrypt": p["recommend"],
-                "column": p["name"],
-                **({"sheet": p["scope"]} if multi else {}),
-                "category": p["category"] or "—",
-                "sensitivity": p["sensitivity"] or "",
-                "regulations": ", ".join(p["regulations"]),
-                "confidence": float(p["confidence"]),
-                "decision": p["plan"],
-                "evidence": ((f"name:{p['name_strength']}" if p["name_strength"] else "")
-                             + (f" value:{p['value_detector']}({p['value_ratio']})"
-                                if p["value_detector"] else "")).strip(),
-            } for p in rows])
+            # Inline checkboxes AND a color-coded confidence bar. st.data_editor
+            # draws cells on a canvas whose ProgressColumn can't be colored per
+            # value, so rows are laid out manually with st.checkbox + an HTML bar.
+            base = st.session_state.base
+            spec = [0.7, 1.8] + ([1.2] if multi else []) + [1.3, 1.1, 1.4, 1.8, 1.0, 1.6]
+            heads = ["", "column"] + (["sheet"] if multi else []) + [
+                "category", "sensitivity", "regulations", "confidence", "decision", "evidence"]
+            hcols = st.columns(spec)
+            for hc, h in zip(hcols, heads):
+                hc.markdown(f"**{h}**" if h else "")
 
-            edited = st.data_editor(
-                df, use_container_width=True, hide_index=True,
-                disabled=[c for c in df.columns if c != "Encrypt"],
-                column_config={
-                    "Encrypt": st.column_config.CheckboxColumn("Encrypt", default=False),
-                    "confidence": st.column_config.ProgressColumn(
-                        "confidence", min_value=0.0, max_value=1.0, format="%.2f"),
-                },
-                key="editor",
-            )
-
-            sel = {(p["scope"], p["name"])
-                   for p, on in zip(rows, edited["Encrypt"].tolist()) if on}
+            sel = set()
+            for p in rows:
+                ev = ((f"name:{p['name_strength']}" if p["name_strength"] else "")
+                      + (f" value:{p['value_detector']}({p['value_ratio']})"
+                         if p["value_detector"] else "")).strip()
+                c = st.columns(spec)
+                if c[0].checkbox("select", value=p["recommend"],
+                                 key=f"enc::{base}::{p['scope']}::{p['name']}",
+                                 label_visibility="collapsed"):
+                    sel.add((p["scope"], p["name"]))
+                i = 1
+                c[i].write(p["name"]); i += 1
+                if multi:
+                    c[i].write(p["scope"]); i += 1
+                c[i].write(p["category"] or "—"); i += 1
+                c[i].write(p["sensitivity"] or ""); i += 1
+                c[i].write(", ".join(p["regulations"])); i += 1
+                c[i].markdown(_conf_bar(float(p["confidence"])), unsafe_allow_html=True); i += 1
+                c[i].write(p["plan"]); i += 1
+                c[i].caption(ev)
 
             if st.button(f"Encrypt selected ({len(sel)})", type="primary", disabled=not sel):
                 d = workdir()
