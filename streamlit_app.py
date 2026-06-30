@@ -12,12 +12,12 @@ your control. Hosting on a public service (e.g. Streamlit Community Cloud) uploa
 files you are trying to protect to that third party — not recommended for real PII.
 """
 import datetime as dt
-import html
 import json
 import os
 import tempfile
 
 import streamlit as st
+import pandas as pd
 from cryptography.fernet import Fernet, InvalidToken
 
 from pii_guardian.cellcrypto import (
@@ -40,25 +40,9 @@ def workdir() -> str:
     return st.session_state.work
 
 
-def _conf_bar(v: float) -> str:
-    """Render confidence as a colored progress bar: green high, amber medium, red low."""
-    color = "#21c45d" if v >= 0.80 else "#f59e0b" if v >= 0.50 else "#ef4444"
-    pct = max(0, min(100, int(round(v * 100))))
-    return (
-        "<div style='display:flex;align-items:center;gap:8px;'>"
-        "<div style='flex:1;min-width:90px;background:#2b2f3a;border-radius:6px;height:14px;overflow:hidden;'>"
-        f"<div style='width:{pct}%;background:{color};height:100%;border-radius:6px;'></div></div>"
-        f"<span style='min-width:34px;text-align:right;'>{v:.2f}</span></div>"
-    )
-
-
 CLF = get_classifier()
 
 st.title("PII Guardian -- Cell Encryption")
-st.caption("Reuses the project's PII detection (cde_dictionary + value detectors). "
-           "Connection-free: files are processed where this app runs.")
-st.warning("Run this locally or on an internal host. Uploading sensitive files to a "
-           "public deployment defeats the purpose — keep data and keys in your control.")
 
 tab_enc, tab_dec = st.tabs(["Encrypt", "Decrypt"])
 
@@ -104,45 +88,33 @@ with tab_enc:
         if not rows:
             st.success("No sensitive columns detected.")
         else:
-            def _row_label(p):
-                return f"{p['scope']} · {p['name']}" if multi else p["name"]
+            df = pd.DataFrame([{
+                "Encrypt": p["recommend"],
+                "column": p["name"],
+                **({"sheet": p["scope"]} if multi else {}),
+                "category": p["category"] or "—",
+                "sensitivity": p["sensitivity"] or "",
+                "regulations": ", ".join(p["regulations"]),
+                "confidence": float(p["confidence"]),
+                "decision": p["plan"],
+                "evidence": ((f"name:{p['name_strength']}" if p["name_strength"] else "")
+                             + (f" value:{p['value_detector']}({p['value_ratio']})"
+                                if p["value_detector"] else "")).strip(),
+            } for p in rows])
 
-            # Color-coded table rendered as HTML: st.data_editor draws on a canvas
-            # whose ProgressColumn has no per-value color option, so the bars are
-            # built here instead. Selection lives in the multiselect below.
-            head = ["column"] + (["sheet"] if multi else []) + [
-                "category", "sensitivity", "regulations", "confidence", "decision", "evidence"]
-            thead = "".join(f"<th>{h}</th>" for h in head)
-            body = []
-            for p in rows:
-                ev = ((f"name:{p['name_strength']}" if p["name_strength"] else "")
-                      + (f" value:{p['value_detector']}({p['value_ratio']})"
-                         if p["value_detector"] else "")).strip()
-                text_cells = [p["name"]] + ([p["scope"]] if multi else []) + [
-                    p["category"] or "—", p["sensitivity"] or "",
-                    ", ".join(p["regulations"])]
-                tds = "".join(f"<td>{html.escape(str(c))}</td>" for c in text_cells)
-                tds += f"<td>{_conf_bar(float(p['confidence']))}</td>"
-                tds += f"<td>{html.escape(p['plan'])}</td><td>{html.escape(ev)}</td>"
-                body.append(f"<tr>{tds}</tr>")
-            st.markdown(
-                "<style>.pgtbl{width:100%;border-collapse:collapse;font-size:0.9rem;}"
-                ".pgtbl th,.pgtbl td{padding:6px 10px;border-bottom:1px solid #2b2f3a;"
-                "text-align:left;vertical-align:middle;}"
-                ".pgtbl th{color:#9aa0aa;font-weight:600;}</style>"
-                f"<table class='pgtbl'><thead><tr>{thead}</tr></thead>"
-                f"<tbody>{''.join(body)}</tbody></table>",
-                unsafe_allow_html=True,
+            edited = st.data_editor(
+                df, use_container_width=True, hide_index=True,
+                disabled=[c for c in df.columns if c != "Encrypt"],
+                column_config={
+                    "Encrypt": st.column_config.CheckboxColumn("Encrypt", default=False),
+                    "confidence": st.column_config.ProgressColumn(
+                        "confidence", min_value=0.0, max_value=1.0, format="%.2f"),
+                },
+                key="editor",
             )
 
-            label_key = {_row_label(p): (p["scope"], p["name"]) for p in rows}
-            default_sel = [_row_label(p) for p in rows if p["recommend"]]
-            chosen = st.multiselect(
-                "Columns to encrypt (recommended are pre-selected)",
-                options=list(label_key.keys()), default=default_sel,
-                key=f"enc_sel::{st.session_state.base}",
-            )
-            sel = {label_key[c] for c in chosen}
+            sel = {(p["scope"], p["name"])
+                   for p, on in zip(rows, edited["Encrypt"].tolist()) if on}
 
             if st.button(f"Encrypt selected ({len(sel)})", type="primary", disabled=not sel):
                 d = workdir()
