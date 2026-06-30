@@ -12,6 +12,7 @@ your control. Hosting on a public service (e.g. Streamlit Community Cloud) uploa
 files you are trying to protect to that third party — not recommended for real PII.
 """
 import datetime as dt
+import html
 import json
 import os
 import tempfile
@@ -47,8 +48,13 @@ def _conf_bar(v: float) -> str:
         "<div style='display:flex;align-items:center;gap:8px;'>"
         "<div style='flex:1;min-width:60px;background:#2b2f3a;border-radius:6px;height:14px;overflow:hidden;'>"
         f"<div style='width:{pct}%;background:{color};height:100%;border-radius:6px;'></div></div>"
-        f"<span style='min-width:34px;text-align:right;'>{v:.2f}</span></div>"
+        f"<span style='min-width:34px;text-align:right;font-size:0.8rem;'>{v:.2f}</span></div>"
     )
+
+
+def _cell(text) -> str:
+    """Small-font table cell."""
+    return f"<span style='font-size:0.8rem;'>{html.escape(str(text))}</span>"
 
 
 CLF = get_classifier()
@@ -108,7 +114,9 @@ with tab_enc:
                 "category", "sensitivity", "regulations", "confidence", "decision", "evidence"]
             hcols = st.columns(spec)
             for hc, h in zip(hcols, heads):
-                hc.markdown(f"**{h}**" if h else "")
+                hc.markdown(
+                    f"<span style='font-size:0.75rem;font-weight:700;color:#9aa0aa;'>{h}</span>"
+                    if h else "", unsafe_allow_html=True)
 
             sel = set()
             for p in rows:
@@ -121,15 +129,15 @@ with tab_enc:
                                  label_visibility="collapsed"):
                     sel.add((p["scope"], p["name"]))
                 i = 1
-                c[i].write(p["name"]); i += 1
+                c[i].markdown(_cell(p["name"]), unsafe_allow_html=True); i += 1
                 if multi:
-                    c[i].write(p["scope"]); i += 1
-                c[i].write(p["category"] or "—"); i += 1
-                c[i].write(p["sensitivity"] or ""); i += 1
-                c[i].write(", ".join(p["regulations"])); i += 1
+                    c[i].markdown(_cell(p["scope"]), unsafe_allow_html=True); i += 1
+                c[i].markdown(_cell(p["category"] or "—"), unsafe_allow_html=True); i += 1
+                c[i].markdown(_cell(p["sensitivity"] or ""), unsafe_allow_html=True); i += 1
+                c[i].markdown(_cell(", ".join(p["regulations"])), unsafe_allow_html=True); i += 1
                 c[i].markdown(_conf_bar(float(p["confidence"])), unsafe_allow_html=True); i += 1
-                c[i].write(p["plan"]); i += 1
-                c[i].caption(ev)
+                c[i].markdown(_cell(p["plan"]), unsafe_allow_html=True); i += 1
+                c[i].markdown(_cell(ev), unsafe_allow_html=True)
 
             if st.button(f"Encrypt selected ({len(sel)})", type="primary", disabled=not sel):
                 d = workdir()
