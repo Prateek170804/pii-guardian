@@ -40,6 +40,12 @@ def workdir() -> str:
     return st.session_state.work
 
 
+def _conf_label(v: float) -> str:
+    """Color-code confidence: green high, amber medium, red low."""
+    dot = "🟢" if v >= 0.80 else "🟡" if v >= 0.50 else "🔴"
+    return f"{dot} {v:.2f}"
+
+
 CLF = get_classifier()
 
 st.title("PII Guardian -- Cell Encryption")
@@ -99,7 +105,7 @@ with tab_enc:
                 "category": p["category"] or "—",
                 "sensitivity": p["sensitivity"] or "",
                 "regulations": ", ".join(p["regulations"]),
-                "confidence": float(p["confidence"]),
+                "confidence": _conf_label(float(p["confidence"])),
                 "decision": p["plan"],
                 "evidence": ((f"name:{p['name_strength']}" if p["name_strength"] else "")
                              + (f" value:{p['value_detector']}({p['value_ratio']})"
@@ -111,8 +117,8 @@ with tab_enc:
                 disabled=[c for c in df.columns if c != "Encrypt"],
                 column_config={
                     "Encrypt": st.column_config.CheckboxColumn("Encrypt", default=False),
-                    "confidence": st.column_config.ProgressColumn(
-                        "confidence", min_value=0.0, max_value=1.0, format="%.2f"),
+                    "confidence": st.column_config.TextColumn(
+                        "confidence", help="green >= 0.80 (high) - amber >= 0.50 (medium) - red < 0.50 (low)"),
                 },
                 key="editor",
             )
